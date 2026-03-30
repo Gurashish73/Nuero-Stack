@@ -102,7 +102,7 @@ export default function LandingPage() {
         <div className="w-full max-w-sm mx-auto flex flex-col gap-3 mt-8 lg:mt-0">
           
           <p className="text-center font-bold text-gray-500 uppercase tracking-widest text-[10px] mb-0">
-            Interactive Neural Map Achha ji
+            Interactive Neural Map
           </p>
           
           {/* TOP SECTION */}
