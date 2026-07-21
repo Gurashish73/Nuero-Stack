@@ -14,11 +14,11 @@ import {
   toggleGreenTime 
 } from './hardwareSlice';
 import { awardNeuralPower } from '../../utils/scoring'; 
+import { generateContent } from '../../services/gemini'; // NEW: Secure backend service
 
 export default function HardwareLog() {
   const dispatch = useDispatch();
   const hardware = useSelector((state) => state.hardware) || {};
-  const currentUser = useSelector((state) => state.auth?.user); 
   
   const [now, setNow] = useState(Date.now());
   const [customName, setCustomName] = useState('');
@@ -52,13 +52,13 @@ export default function HardwareLog() {
   useEffect(() => {
     const isHighCaffeine = activeCaffeine > 400;
     if (isHighCaffeine && !prevCaffeineState.current) {
-      awardNeuralPower(currentUser?.uid, -20);
+      awardNeuralPower('caffeine_penalty', -20); // NEW: Backend action routing
       prevCaffeineState.current = true;
     } else if (!isHighCaffeine && prevCaffeineState.current) {
-      awardNeuralPower(currentUser?.uid, 20);
+      awardNeuralPower('caffeine_penalty', 20); // NEW: Backend action routing
       prevCaffeineState.current = false;
     }
-  }, [activeCaffeine, currentUser?.uid]);
+  }, [activeCaffeine]);
 
   //TRIFECTA SCORE INTEGRATION HANDLERS
   
@@ -67,29 +67,29 @@ export default function HardwareLog() {
     const newScore = Math.round(Math.min(20, (newHours / 7) * 20));
     const diff = newScore - currentScore;
     
-    if (diff !== 0) awardNeuralPower(currentUser?.uid, diff);
+    if (diff !== 0) awardNeuralPower('sleep_log', diff); // NEW: Backend action routing
     dispatch(logSleep(newHours));
   };
 
   const handleToggleDiet = () => {
     const isCurrentlyLogged = hardware.dietLogged;
-    awardNeuralPower(currentUser?.uid, isCurrentlyLogged ? -15 : 15);
+    awardNeuralPower('diet_log', isCurrentlyLogged ? -15 : 15); // NEW: Backend action routing
     dispatch(toggleDiet());
   };
 
   const handleLogWater = (glass) => {
     const current = hardware.waterIntake || 0;
     if (glass > current) {
-      awardNeuralPower(currentUser?.uid, (glass - current) * 5); // +5 per new glass
+      awardNeuralPower('water_drink', (glass - current) * 5); // +5 per new glass
     } else if (glass < current) {
-      awardNeuralPower(currentUser?.uid, -(current - glass) * 5); // -5 per removed glass
+      awardNeuralPower('water_drink', -(current - glass) * 5); // -5 per removed glass
     }
     dispatch(logWater(glass));
   };
 
   const handleToggleGreenTime = () => {
     const isCurrentlyLogged = hardware.greenTime;
-    awardNeuralPower(currentUser?.uid, isCurrentlyLogged ? -10 : 10);
+    awardNeuralPower('green_time', isCurrentlyLogged ? -10 : 10); // NEW: Backend action routing
     dispatch(toggleGreenTime());
   };
 
@@ -101,9 +101,9 @@ export default function HardwareLog() {
     const willExercise = protocol !== currentProtocol;
 
     if (willExercise && !isCurrentlyExercising) {
-      awardNeuralPower(currentUser?.uid, 25);
+      awardNeuralPower('complete_workout', 25); // NEW: Backend action routing
     } else if (!willExercise && isCurrentlyExercising) {
-      awardNeuralPower(currentUser?.uid, -25);
+      awardNeuralPower('complete_workout', -25); // NEW: Backend action routing
     }
     
     dispatch(setExerciseProtocol(willExercise ? protocol : 'none'));
@@ -125,18 +125,18 @@ export default function HardwareLog() {
     if (isToxicLockdown || !customName) return; 
     setIsScanning(true); setAiVerdict(null);
     try {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
       const currentHour = new Date().getHours();
       let prompt = `I am a high-performance engineer. It is currently hour ${currentHour} (24h format). I already have ${activeCaffeine}mg of active caffeine in my blood. Target sleep time is 23:00. `;
+      
       if (customAmount) {
         prompt += `I want to drink: ${customName} specifically at ${customAmount}mg. Provide a brutal, 1-sentence assessment of whether this dose is biologically safe. Start with either [APPROVED] or [DENIED].`;
       } else {
         prompt += `I want to drink: ${customName}. Calculate my remaining safe caffeine allowance for the day to ensure my active caffeine decays below 50mg by 23:00 (5-hour half-life). Start with [RECOMMENDATION] and state exactly how many mg of ${customName} I can safely consume right now.`;
       }
-      const result = await model.generateContent(prompt);
-      setAiVerdict(result.response.text().trim());
+      
+      // NEW: Secure backend generation
+      const text = await generateContent(prompt);
+      setAiVerdict(text.trim());
     } catch (error) {
       setAiVerdict("[WARNING] Neural link severed. Drink at your own risk.");
     } finally {

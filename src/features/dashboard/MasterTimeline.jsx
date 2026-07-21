@@ -4,15 +4,14 @@ import { Zap, CheckCircle2, ArrowRightCircle, Loader2, RefreshCw, Activity, Targ
 import { useSelector, useDispatch } from 'react-redux';
 import { updateActiveTask, toggleTask, setSchedule } from './timelineSlice'; 
 import { useNavigate } from 'react-router-dom';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { awardNeuralPower } from '../../utils/scoring'; 
+import { awardNeuralPower } from '../../utils/scoring';
+import { generateJSON } from '../../services/gemini';
 
 export default function MasterTimeline() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   
   const isInitializing = useSelector(state => state.auth?.isInitializing);
-  const currentUser = useSelector(state => state.auth?.user);
   
   const dailySchedule = useSelector((state) => state.timeline.schedule);
   const hardware = useSelector((state) => state.hardware) || {};
@@ -41,12 +40,12 @@ export default function MasterTimeline() {
         if (hardware?.exercised && !isComplete) {
           dispatch(toggleTask(task.id));
           dispatch(updateActiveTask());
-          awardNeuralPower(currentUser?.uid, 10); 
+          awardNeuralPower('timeline_task_toggle', 10); // Uses action string & points override
         } 
         else if (!hardware?.exercised && isComplete) {
           dispatch(toggleTask(task.id));
           dispatch(updateActiveTask());
-          awardNeuralPower(currentUser?.uid, -10); 
+          awardNeuralPower('timeline_task_toggle', -10); 
         }
       }
       prevExercised.current = hardware?.exercised; 
@@ -62,18 +61,18 @@ export default function MasterTimeline() {
         if (isVaultClear && !isComplete) {
           dispatch(toggleTask(task.id));
           dispatch(updateActiveTask());
-          awardNeuralPower(currentUser?.uid, 10);
+          awardNeuralPower('timeline_task_toggle', 10);
         } 
         else if (!isVaultClear && isComplete) {
           dispatch(toggleTask(task.id));
           dispatch(updateActiveTask());
-          awardNeuralPower(currentUser?.uid, -10);
+          awardNeuralPower('timeline_task_toggle', -10);
         }
       }
       prevVaultClear.current = isVaultClear; 
     }
 
-  }, [hardware?.exercised, dueCardsCount, dailySchedule, dispatch, vault?.cards?.length, currentUser?.uid]);
+  }, [hardware?.exercised, dueCardsCount, dailySchedule, dispatch, vault?.cards?.length]);
 
   const getOracleInsight = () => {
     const { sleepHours, exercised, waterIntake, caffeineLogs } = hardware;
@@ -116,9 +115,6 @@ export default function MasterTimeline() {
 
     setIsGenerating(true);
     try {
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { responseMimeType: "application/json" } });
-
       const prompt = `
         You are the Limitless OS Oracle. 
         User's biological state: ${hardware.sleepHours}h sleep, ${dueCardsCount} flashcards due.
@@ -130,8 +126,8 @@ export default function MasterTimeline() {
         { "dayType": "Hyper-Focus Day", "schedule": [ { "id": 1, "time": "T+0:00", "title": "String", "subtitle": "String", "status": "upcoming", "dotColor": "bg-gray-800", "path": "/path" } ] }
       `;
 
-      const result = await model.generateContent(prompt);
-      const parsedData = JSON.parse(result.response.text());
+      // NEW: Secure backend generation
+      const parsedData = await generateJSON(prompt);
 
       localStorage.setItem('timeline_date', today);
       localStorage.setItem('timeline_day_type', parsedData.dayType);
@@ -184,8 +180,8 @@ export default function MasterTimeline() {
 
     console.log(`[TIMELINE] Target: ${task.title}. Currently Checked? ${isCurrentlyChecked}. Modifying Score by: ${pointsToAward}`);
 
-    // Inject Points
-    awardNeuralPower(currentUser?.uid, pointsToAward);
+    // Inject Points via Backend Route
+    awardNeuralPower('timeline_task_toggle', pointsToAward);
 
     // Dispatch the Redux state flip
     dispatch(toggleTask(taskId));      

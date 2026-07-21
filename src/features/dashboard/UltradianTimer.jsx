@@ -67,7 +67,7 @@ export default function UltradianTimer() {
       
       // INJECT 50 POINTS
       if (currentUser?.uid) {
-        awardNeuralPower(currentUser.uid, 50);
+        awardNeuralPower('ultradian_sprint'); // NEW: Backend action routing
       }
 
       if (Notification.permission === "granted") {

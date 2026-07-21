@@ -3,16 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, BrainCircuit, Plus, Sparkles, Network, Loader2, Search } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { addCard, injectAICards } from './vaultSlice';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateJSON } from '../../services/gemini';
 
 export default function AddKnowledgeModal({ isOpen, onClose }) {
   const dispatch = useDispatch();
   const journeyNodes = useSelector(state => state.journey.nodes);
   
-  // 3 Modes: 'journey', 'search', or 'manual'
   const [mode, setMode] = useState('journey'); 
-  
-  // States
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
   const [selectedNodeId, setSelectedNodeId] = useState('');
@@ -30,34 +27,22 @@ export default function AddKnowledgeModal({ isOpen, onClose }) {
     onClose();
   };
 
-  //REUSABLE AI ENGINE
   const generateCardsFromAI = async (promptText, topicLabel) => {
     setIsGenerating(true);
     try {
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.5-flash",
-        generationConfig: { responseMimeType: "application/json" }
-      });
-
-      const result = await model.generateContent(promptText);
-      const parsedCards = JSON.parse(result.response.text());
-
+      const parsedCards = await generateJSON(promptText);
       dispatch(injectAICards({ cards: parsedCards, topic: topicLabel }));
-      
-      // Reset inputs
       setCustomTopic('');
       setSelectedNodeId('');
       onClose();
     } catch (error) {
       console.error("AI Extraction Failed:", error);
-      alert("Neural link failed. Ensure your API key is valid and try a different topic.");
+      alert("Neural link failed. Ensure your server connection is active.");
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // PATH 1: Journey Extraction
   const handleJourneyAIGenerate = async (e) => {
     e.preventDefault();
     if (!selectedNodeId) return;
@@ -79,7 +64,6 @@ export default function AddKnowledgeModal({ isOpen, onClose }) {
     await generateCardsFromAI(prompt, node.title);
   };
 
-  // PATH 2: Custom Deep Search
   const handleCustomSearchAIGenerate = async (e) => {
     e.preventDefault();
     if (!customTopic.trim()) return;
@@ -113,7 +97,6 @@ export default function AddKnowledgeModal({ isOpen, onClose }) {
               {!isGenerating && <button onClick={onClose} className="p-2 text-gray-500 hover:text-white bg-gray-900 rounded-full"><X className="w-5 h-5" /></button>}
             </div>
 
-            {/* THREE-WAY TABS */}
             <div className="flex border-b border-gray-800">
               <button onClick={() => setMode('journey')} className={`flex-1 py-3 text-[10px] sm:text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${mode === 'journey' ? 'bg-purple-600/10 text-purple-400 border-b-2 border-purple-500' : 'text-gray-500 hover:text-gray-300 hover:bg-[#161618]'}`}>
                 <Network className="w-4 h-4" /> Journey
@@ -126,10 +109,7 @@ export default function AddKnowledgeModal({ isOpen, onClose }) {
               </button>
             </div>
 
-            {/* RENDER CONTENT BASED ON MODE */}
             <div className="p-6">
-              
-              {/* MODE 1: JOURNEY */}
               {mode === 'journey' && (
                 <form onSubmit={handleJourneyAIGenerate} className="space-y-6">
                   <p className="text-sm text-gray-400 mb-2">Extract core concepts directly from your active Journey map.</p>
@@ -156,7 +136,6 @@ export default function AddKnowledgeModal({ isOpen, onClose }) {
                 </form>
               )}
 
-              {/* MODE 2: CUSTOM DEEP SEARCH */}
               {mode === 'search' && (
                 <form onSubmit={handleCustomSearchAIGenerate} className="space-y-6">
                   <p className="text-sm text-gray-400 mb-2">Curious about something off the path? Let the Oracle extract the knowledge.</p>
@@ -166,7 +145,7 @@ export default function AddKnowledgeModal({ isOpen, onClose }) {
                       type="text"
                       value={customTopic}
                       onChange={(e) => setCustomTopic(e.target.value)}
-                      placeholder="e.g., Docker Containers, The Krebs Cycle, React Context API..."
+                      placeholder="e.g., Docker Containers, The Krebs Cycle..."
                       className="w-full bg-[#0a0a0a] border border-gray-800 rounded-xl p-4 text-white focus:border-cyan-500 outline-none"
                       autoFocus
                     />
@@ -177,7 +156,6 @@ export default function AddKnowledgeModal({ isOpen, onClose }) {
                 </form>
               )}
 
-              {/* MODE 3: MANUAL */}
               {mode === 'manual' && (
                 <form onSubmit={handleManualSubmit} className="space-y-5">
                   <div>

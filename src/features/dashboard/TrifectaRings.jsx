@@ -55,32 +55,32 @@ export default function TrifectaRings() {
 
     //DIET TRACKER (+15 Points)
     if (hardware.dietLogged && !prevDiet.current) { 
-      awardNeuralPower(currentUser.uid, 15); 
+      awardNeuralPower('diet_log', 15); // NEW: Backend action routing
       prevDiet.current = true; 
     }
     else if (!hardware.dietLogged && prevDiet.current) { 
-      awardNeuralPower(currentUser.uid, -15); 
+      awardNeuralPower('diet_log', -15); // NEW: Backend action routing
       prevDiet.current = false; 
     }
 
     //GREEN TIME TRACKER (+10 Points)
     if (hardware.greenTime && !prevGreen.current) { 
-      awardNeuralPower(currentUser.uid, 10); 
+      awardNeuralPower('green_time', 10); // NEW: Backend action routing
       prevGreen.current = true; 
     }
     else if (!hardware.greenTime && prevGreen.current) { 
-      awardNeuralPower(currentUser.uid, -10); 
+      awardNeuralPower('green_time', -10); // NEW: Backend action routing
       prevGreen.current = false; 
     }
 
     //EXERCISE TRACKER (+25 Points)
     const hasExercised = hardware.exerciseProtocol && hardware.exerciseProtocol !== 'none';
     if (hasExercised && !prevExercise.current) { 
-      awardNeuralPower(currentUser.uid, 25); 
+      awardNeuralPower('complete_workout', 25); // NEW: Backend action routing
       prevExercise.current = true; 
     }
     else if (!hasExercised && prevExercise.current) { 
-      awardNeuralPower(currentUser.uid, -25); 
+      awardNeuralPower('complete_workout', -25); // NEW: Backend action routing
       prevExercise.current = false; 
     }
 
@@ -88,21 +88,21 @@ export default function TrifectaRings() {
     const currentWater = hardware.waterIntake || 0;
     if (currentWater > prevWater.current) {
       const diff = currentWater - prevWater.current;
-      awardNeuralPower(currentUser.uid, diff * 5); 
+      awardNeuralPower('water_drink', diff * 5); // NEW: Backend action routing
       prevWater.current = currentWater;
     } else if (currentWater < prevWater.current) {
       const diff = prevWater.current - currentWater;
-      awardNeuralPower(currentUser.uid, -(diff * 5));
+      awardNeuralPower('water_drink', -(diff * 5)); // NEW: Backend action routing
       prevWater.current = currentWater;
     }
 
     //VAULT MASTERY TRACKER (+40 Points for reaching inbox zero)
     const isVaultClear = vault.cards?.length > 0 && dueCardsCount === 0;
     if (isVaultClear && !prevVaultClear.current) {
-      awardNeuralPower(currentUser.uid, 40);
+      awardNeuralPower('vault_mastery', 40); // NEW: Backend action routing
       prevVaultClear.current = true;
     } else if (!isVaultClear && prevVaultClear.current) {
-      awardNeuralPower(currentUser.uid, -40);
+      awardNeuralPower('vault_mastery', -40); // NEW: Backend action routing
       prevVaultClear.current = false;
     }
 

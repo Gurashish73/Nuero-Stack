@@ -3,7 +3,7 @@ import { Zap, CheckCircle2, Circle, Loader2, RefreshCw } from 'lucide-react';
 import { useDispatch } from 'react-redux';
 import { addMindProgress } from './streakSlice';
 import { incrementNovelty } from '../hardwareLog/hardwareSlice';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateJSON } from '../../services/gemini'; // NEW: Proxy service
 
 export default function NoveltyPrompt() {
   const dispatch = useDispatch();
@@ -34,16 +34,6 @@ export default function NoveltyPrompt() {
     }
 
     try {
-      if (!import.meta.env.VITE_GEMINI_API_KEY) {
-        throw new Error("VITE_GEMINI_API_KEY is missing from your .env file!");
-      }
-
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.5-flash",
-        generationConfig: { responseMimeType: "application/json" }
-      });
-
       const prompt = `
         Generate 2 short, highly actionable neuroplasticity exercises for a programmer to do today to build new neural pathways.
         Task 1 (Analog Mode): A task that replaces a digital habit with an analog one.
@@ -56,8 +46,8 @@ export default function NoveltyPrompt() {
         }
       `;
 
-      const result = await model.generateContent(prompt);
-      const parsedData = JSON.parse(result.response.text());
+      // NEW: Calls the backend securely instead of using the raw API key
+      const parsedData = await generateJSON(prompt);
 
       const newPrompts = {
         task1: parsedData.task1,

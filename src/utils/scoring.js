@@ -1,22 +1,25 @@
-import { doc, setDoc, increment } from 'firebase/firestore';
-import { db } from '../config/firebase'; 
+import { auth } from '../config/firebase';
 
-export const awardNeuralPower = async (uid, points) => {
-  if (!uid) {
-    console.warn("Scoring Engine: No UID provided. Cannot award points.");
-    return;
-  }
-  
+export const awardNeuralPower = async (action, pointsOverride = null) => {
+  const user = auth.currentUser;
+  if (!user) return;
+
   try {
-    const safePoints = parseInt(points, 10); 
-    console.log(`[MATRIX SYNC] Injecting ${safePoints > 0 ? '+' : ''}${safePoints} Power to Agent ${uid}.`);
-    const userRef = doc(db, 'directory', uid);
-    
-    await setDoc(userRef, {
-      score: increment(safePoints)
-    }, { merge: true });
-    
+    const idToken = await user.getIdToken();
+    const res = await fetch('/api/score', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ action, pointsOverride }),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      console.error(`Scoring failed: ${body.error || res.status}`);
+    }
   } catch (error) {
-    console.error("Scoring Engine Error - Failed to sync power to the Matrix:", error);
+    console.error('Failed to communicate with score engine:', error);
   }
 };

@@ -1,39 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Loader2, Key } from 'lucide-react';
+import { X, Sparkles, Loader2 } from 'lucide-react';
 import { useDispatch } from 'react-redux';
 import { injectAITree } from './journeySlice';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateJSON } from '../../services/gemini';
 
 export default function AIGeneratorModal({ isOpen, onClose }) {
   const dispatch = useDispatch();
   const [topic, setTopic] = useState('');
-  // Initialize API key from local storage so it remembers it
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
 
   const handleGenerate = async (e) => {
     e.preventDefault();
-    if (!topic.trim() || !apiKey.trim()) {
-      setError('Please provide both a topic and an API key.');
-      return;
-    }
+    if (!topic.trim()) return;
     
     setIsGenerating(true);
     setError('');
 
-    // Save the key to local storage for future use
-    localStorage.setItem('gemini_api_key', apiKey.trim());
-
     try {
-      // Use the API key provided in the UI, NOT the environment variable
-      const genAI = new GoogleGenerativeAI(apiKey.trim());
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.5-flash",
-        generationConfig: { responseMimeType: "application/json" }
-      });
-
       const prompt = `
         You are an expert learning architect. Create a 5-step learning roadmap for a student wanting to master: "${topic}".
         
@@ -49,25 +34,14 @@ export default function AIGeneratorModal({ isOpen, onClose }) {
         - "unlocks": An array of strings containing the "id" of the nodes that this current node connects to. Ensure they link together logically from start to finish.
       `;
 
-      // Call API
-      const result = await model.generateContent(prompt);
-      const responseText = result.response.text();
-      
-      // Parse and Inject
-      const generatedNodes = JSON.parse(responseText);
+      const generatedNodes = await generateJSON(prompt);
       dispatch(injectAITree(generatedNodes));
       
-      // Cleanup
       setTopic('');
       onClose();
     } catch (err) {
       console.error(err);
-      // More specific error handling
-      if (err.message.includes('403') || err.message.includes('API key not valid')) {
-        setError('Invalid or disabled API key. Please check Google AI Studio.');
-      } else {
-        setError('Neural link failed. Ensure the key is correct and try again.');
-      }
+      setError('Neural link failed. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -80,8 +54,6 @@ export default function AIGeneratorModal({ isOpen, onClose }) {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={!isGenerating ? onClose : null} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40" />
           
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-[#111113] border border-purple-500/30 rounded-3xl shadow-[0_0_50px_rgba(168,85,247,0.15)] z-50 overflow-hidden">
-            
-            {/* Animated Gradient Border Top */}
             <div className="h-1 w-full bg-linear-to-r from-cyan-500 via-purple-500 to-pink-500 animate-pulse" />
 
             <div className="p-8">
@@ -98,24 +70,10 @@ export default function AIGeneratorModal({ isOpen, onClose }) {
               </div>
 
               <p className="text-gray-400 mb-6 leading-relaxed">
-                Enter your secure API key and a discipline. The AI will instantly architect a 5-step neural topology to guide your mastery.
+                Enter any skill, concept, or discipline. The AI will instantly architect a 5-step neural topology to guide your mastery.
               </p>
 
               <form onSubmit={handleGenerate} className="space-y-4">
-                {/* NEW: API Key Input Field */}
-                <div className="relative">
-                  <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                  <input
-                    type="password"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="Enter your Gemini API Key..."
-                    disabled={isGenerating}
-                    className="w-full bg-[#0a0a0a] border border-gray-800 rounded-xl py-4 pl-12 pr-4 text-white text-md focus:border-purple-500 outline-none disabled:opacity-50"
-                  />
-                </div>
-
-                {/* EXISTING: Topic Input Field */}
                 <input
                   type="text"
                   value={topic}
@@ -130,7 +88,7 @@ export default function AIGeneratorModal({ isOpen, onClose }) {
 
                 <button
                   type="submit"
-                  disabled={!topic.trim() || !apiKey.trim() || isGenerating}
+                  disabled={!topic.trim() || isGenerating}
                   className="w-full flex items-center justify-center gap-3 py-4 bg-purple-600 text-white rounded-xl font-black hover:bg-purple-500 disabled:opacity-50 transition-all shadow-[0_0_20px_rgba(168,85,247,0.4)] uppercase tracking-widest mt-4"
                 >
                   {isGenerating ? (

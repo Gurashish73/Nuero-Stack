@@ -8,18 +8,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
 import { addMindProgress } from '../dashboard/streakSlice';
 import { completeTask, updateActiveTask } from '../dashboard/timelineSlice';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { incrementNovelty } from '../hardwareLog/hardwareSlice';
 import { awardNeuralPower } from '../../utils/scoring';
+import { generateContent } from '../../services/gemini'; // NEW: Secure backend service
 
 export default function NeuroGym() {
   const dispatch = useDispatch();
   
-  const currentUser = useSelector((state) => state.auth?.user);
   const timelineSchedule = useSelector((state) => state.timeline?.schedule) || [];
 
   // DYNAMIC TIMELINE CHECKER
-
   const completeGymTimelineTask = () => {
     const gymTask = timelineSchedule.find(t => t.title.toLowerCase().includes('gym') || t.title.toLowerCase().includes('hemisphere') || t.title.toLowerCase().includes('switch'));
     if (gymTask && gymTask.status !== 'completed') {
@@ -28,7 +26,7 @@ export default function NeuroGym() {
     }
   };
 
-  // 1. MATH SPRINT STATE (Prefrontal Cortex
+  // 1. MATH SPRINT STATE (Prefrontal Cortex)
   const [mathActive, setMathActive] = useState(false);
   const [score, setScore] = useState(0);
   const [question, setQuestion] = useState({ q: 'Press Start', a: 0 });
@@ -68,7 +66,7 @@ export default function NeuroGym() {
         dispatch(addMindProgress(25)); 
         // TRIFECTA & LEADERBOARD HOOKS
         dispatch(incrementNovelty());
-        awardNeuralPower(currentUser?.uid, 15); // +15 Global Points
+        awardNeuralPower('math_sprint'); // NEW: Backend action routing
         completeGymTimelineTask();
       } else {
         generateMathProblem();
@@ -96,10 +94,10 @@ export default function NeuroGym() {
 
       // TRIFECTA & LEADERBOARD HOOKS 
       dispatch(incrementNovelty()); 
-      awardNeuralPower(currentUser?.uid, 10);
+      awardNeuralPower('breathing_reset'); // NEW: Backend action routing
     }
     return () => clearInterval(clockInterval);
-  }, [isBreathing, breathTimer, dispatch, currentUser?.uid]);
+  }, [isBreathing, breathTimer, dispatch]);
 
   useEffect(() => {
     let timeout;
@@ -147,9 +145,6 @@ export default function NeuroGym() {
     setIsCreativeComplete(false);
     setCreativeInput('');
     try {
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-      
       const prompt = `
         You are a creative director. Your operator is a coder taking a 'Right Hemisphere' break to prevent left-brain burnout. 
         Generate ONE specific, highly inspiring creative prompt. 
@@ -160,8 +155,9 @@ export default function NeuroGym() {
         Do not use pleasantries. Just output the raw prompt directly. Keep it under 2 sentences.
       `;
       
-      const result = await model.generateContent(prompt);
-      setCreativePrompt(result.response.text());
+      // NEW: Secure backend generation
+      const text = await generateContent(prompt);
+      setCreativePrompt(text);
     } catch (err) {
       setCreativePrompt('Neural link failed. Free-write a scene about a rogue AI.');
     } finally {
@@ -176,7 +172,7 @@ export default function NeuroGym() {
       
       //TRIFECTA & LEADERBOARD HOOKS
       dispatch(incrementNovelty()); 
-      awardNeuralPower(currentUser?.uid, 20);
+      awardNeuralPower('hemisphere_switch'); // NEW: Backend action routing
       completeGymTimelineTask(); 
     }
   };
@@ -195,7 +191,7 @@ export default function NeuroGym() {
 
       // TRIFECTA & LEADERBOARD HOOKS
       dispatch(incrementNovelty()); 
-      awardNeuralPower(currentUser?.uid, 15);
+      awardNeuralPower('external_protocol'); // NEW: Backend action routing
     }
   };
 
