@@ -12,21 +12,23 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-const ACTION_POINTS = {
+// 1. STRICT STATIC ACTIONS: The client cannot override these values.
+const STATIC_ACTIONS = {
   daily_login: 5,
   complete_workout: 25,
   bdnf_sync: 10,
   vault_mastery: 40,
   diet_log: 15,
   green_time: 10,
-  water_drink: 5,
   ultradian_sprint: 50,
   math_sprint: 15,
   breathing_reset: 10,
   hemisphere_switch: 20,
-  external_protocol: 15,
-  timeline_task_toggle: 10
+  external_protocol: 15
 };
+
+// 2. WHITELISTED DYNAMIC ACTIONS: Allowed to receive calculated frontend values.
+const DYNAMIC_ACTIONS = ['timeline_task_toggle', 'sleep_log', 'caffeine_penalty', 'water_drink'];
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || '*');
@@ -38,9 +40,7 @@ export default async function handler(req, res) {
 
   const authHeader = req.headers.authorization || '';
   const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  if (!idToken) {
-    return res.status(401).json({ error: 'Missing token' });
-  }
+  if (!idToken) return res.status(401).json({ error: 'Missing token' });
 
   let decoded;
   try {
@@ -50,13 +50,21 @@ export default async function handler(req, res) {
   }
 
   const { action, pointsOverride } = req.body || {};
-  let points = ACTION_POINTS[action];
+  let points = 0;
 
-  if (points === undefined && typeof pointsOverride === 'number') {
-    points = pointsOverride;
-  }
-
-  if (points === undefined) {
+  // 3. SECURE ROUTING LOGIC
+  if (STATIC_ACTIONS[action] !== undefined) {
+    // Force the static value, ignoring any client override
+    points = STATIC_ACTIONS[action];
+  } else if (DYNAMIC_ACTIONS.includes(action)) {
+    // Accept the dynamic value, but cap it to prevent massive exploits
+    if (typeof pointsOverride === 'number') {
+      points = Math.max(-50, Math.min(50, pointsOverride));
+    } else {
+      return res.status(400).json({ error: `Missing override value for dynamic action: "${action}"` });
+    }
+  } else {
+    // Reject any unknown actions
     return res.status(400).json({ error: `Unknown action: "${action}"` });
   }
 
