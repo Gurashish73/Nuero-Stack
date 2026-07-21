@@ -4,7 +4,7 @@
 
 The Neuro-Stack is a gamified productivity OS built on applied neuroscience — spaced repetition, ultradian rhythm pacing, and neuroplasticity-driven habit design — instead of generic to-do lists. It turns discipline into a trackable, scored system across four brain-region-mapped modules: cognitive training, long-term knowledge retention, physical/biological logging, and reflective focus work.
 
-**Live app:** _add your Vercel URL here_
+**Live app:** https://nuero-stack-72ge.vercel.app/
 
 ---
 
@@ -150,4 +150,4 @@ Set the same environment variables in your Vercel project settings (Project → 
 
 ## License
 
-Add your license here (MIT is a common default for personal projects).
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
