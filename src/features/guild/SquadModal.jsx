@@ -80,16 +80,21 @@ export default function SquadModal({ isOpen, onClose, initialData = null }) {
     e.preventDefault();
     if (!name.trim() || !focus.trim() || members.length === 0) return;
 
+    // Isolate flat user IDs for Firestore security rules
+    const memberIds = members.filter(m => m.uid).map(m => m.uid);
+    if (!memberIds.includes(currentUser.uid)) memberIds.push(currentUser.uid);
+
     try {
       if (initialData) {
         const squadRef = doc(db, 'squads', initialData.id);
-        await updateDoc(squadRef, { name, focus, status, members });
+        await updateDoc(squadRef, { name, focus, status, members, memberIds });
       } else {
         await addDoc(collection(db, 'squads'), {
           name, 
           focus, 
           status, 
           members, 
+          memberIds, // Save the flat array alongside the object array
           arsenal: [],
           ownerId: currentUser.uid
         });

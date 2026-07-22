@@ -80,10 +80,15 @@ export default function TheGuild() {
   const handleLeaveSquad = async (squad) => {
     if (window.confirm("Are you sure you want to desert this squad?")) {
       const updatedMembers = squad.members.filter(m => m.uid !== currentUser?.uid);
+      
+      // Filter out the deserting operative from the flat ID array
+      const updatedMemberIds = (squad.memberIds || []).filter(uid => uid !== currentUser?.uid);
+      
       const logMessage = `${currentUser?.name || 'An operative'} deserted the squad.`;
 
       await updateDoc(doc(db, 'squads', squad.id), { 
         members: updatedMembers,
+        memberIds: updatedMemberIds, // Keep rules in sync
         logs: arrayUnion({ message: logMessage, time: Date.now() })
       });
     }
